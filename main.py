@@ -1,19 +1,19 @@
 import numpy as np
-import time
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 
 class World:
     def __init__(self, size):
         self.size = size
-        self.matrix = np.full(size, " ")
+        self.matrix = np.full(size, 0)
 
     def set_agent(self, agent, new_coords):
         is_in_matrix = (np.array(new_coords) < self.size).all()
         if is_in_matrix:
-            print(f"aid:{agent.id}, old_coords:{agent.coords}, new_coords:{new_coords}")
-            self.matrix[agent.coords[0], agent.coords[1]] = " "
+            self.matrix[agent.coords[0], agent.coords[1]] = 0
             agent.coords = new_coords
-            self.matrix[agent.coords[0], agent.coords[1]] = str(agent.id)
+            self.matrix[agent.coords[0], agent.coords[1]] = agent.id
 
     def __str__(self):
         return str(self.matrix)
@@ -44,6 +44,7 @@ class Programm:
             2: "left",
             3: "right"
         }
+        self.world_states = []
 
     def create_generation(self):
         mask = np.random.choice([0, 1], size=self.world.matrix.shape, p=((1 - self.probability), self.probability))
@@ -76,7 +77,26 @@ class Programm:
                     new_coords[1] += 1
 
                 self.world.set_agent(agent, new_coords)
-                print(self.world)
+                self.world_states.append(self.world.matrix)
+                # print(self.world)
+
+    def animate(self):
+        fig = plt.figure(figsize=(8, 8))
+        a = self.world_states[0]
+        im = plt.imshow(a)
+
+        def animate_func(i):
+            im.set_array(self.world_states[i])
+            return [im]
+
+        anim = animation.FuncAnimation(
+            fig,
+            animate_func,
+            interval=1000,  # in ms
+            frames=len(self.world_states)
+        )
+
+        anim.save("gen_alg.gif", writer="imagemagick")
 
     def __str__(self):
         return str(self.world)
@@ -85,3 +105,4 @@ class Programm:
 programm = Programm(0.1)
 programm.create_generation()
 programm.iter_generation()
+programm.animate()

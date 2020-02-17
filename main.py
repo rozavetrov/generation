@@ -6,7 +6,7 @@ import matplotlib.animation as animation
 class World:
     def __init__(self, size):
         self.size = size
-        self.matrix = np.full(size, 0)
+        self.matrix = np.zeros(size)
 
     def set_agent(self, agent, new_coords):
         is_in_matrix = (np.array(new_coords) < self.size).all()
@@ -30,7 +30,8 @@ class Agent:
         self.genotype = np.random.randint(4, size=4)
 
     def __str__(self):
-        return str(self.genotype)
+        return f"Id:{self.id}, Cs:{self.coords}, \n" \
+               f"Gen:{self.genotype}"
 
 
 class Programm:
@@ -53,13 +54,13 @@ class Programm:
         indexes = np.where(mask == 1)
         indexes = list(zip(indexes[0], indexes[1]))
 
-        self.generation = [Agent(i) for i in range(count_of_agents)]
+        self.generation = [Agent(i) for i in range(1, count_of_agents+1)]
 
         for i, agent in enumerate(self.generation):
             new_coords = list(indexes[i])
             self.world.set_agent(agent, new_coords)
 
-        print(self.world)
+        self.world_states.append(np.copy(self.world.matrix))
 
     def iter_generation(self):
         for i in range(4):
@@ -68,41 +69,45 @@ class Programm:
 
                 new_coords = [agent.coords[0], agent.coords[1]]
                 if rule == "up":
-                    new_coords[0] += 1
-                if rule == "down":
                     new_coords[0] -= 1
+                if rule == "down":
+                    new_coords[0] += 1
                 if rule == "left":
                     new_coords[1] -= 1
                 if rule == "right":
                     new_coords[1] += 1
 
                 self.world.set_agent(agent, new_coords)
-                self.world_states.append(self.world.matrix)
-                # print(self.world)
+                self.world_states.append(np.copy(self.world.matrix))
 
     def animate(self):
         fig = plt.figure(figsize=(8, 8))
-        a = self.world_states[0]
-        im = plt.imshow(a)
+        im = plt.imshow(self.world_states[0])
 
         def animate_func(i):
+            print(i)
             im.set_array(self.world_states[i])
             return [im]
 
         anim = animation.FuncAnimation(
             fig,
             animate_func,
-            interval=1000,  # in ms
+            interval=100,  # in ms
             frames=len(self.world_states)
         )
 
-        anim.save("gen_alg.gif", writer="imagemagick")
+        plt.show()
+        # anim.save("test_anim.gif", writer="imagemagick")
 
     def __str__(self):
         return str(self.world)
 
 
-programm = Programm(0.1)
+programm = Programm(prob_of_agents=0.05, size=(8, 8))
 programm.create_generation()
 programm.iter_generation()
+programm.iter_generation()
+programm.iter_generation()
+programm.iter_generation()
+print(len(programm.world_states))
 programm.animate()

@@ -111,7 +111,7 @@ class World:
     #         random.sample(agent1.genotype.tolist(), k=3) + random.sample(agent2.genotype.tolist(), k=3))
 
 
-class Programm:
+class Program:
     def __init__(self, size, share_of_agents):
         self.world = World(size, share_of_agents)
         self.world_states = []
@@ -148,5 +148,5 @@ class Programm:
         return str(self.world)
 
 
-programm = Programm(share_of_agents=SHARE_OF_AGENTS, size=WORLD_SIZE)
-programm.start()
+program = Program(share_of_agents=SHARE_OF_AGENTS, size=WORLD_SIZE)
+program.start()

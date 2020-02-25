@@ -150,3 +150,4 @@ class Program:
 
 program = Program(share_of_agents=SHARE_OF_AGENTS, size=WORLD_SIZE)
 program.start()
+program.animate()

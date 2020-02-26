@@ -1,15 +1,17 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+from collections import defaultdict
 import matplotlib.animation as animation
 
 # GLOBALS
-AGENT_ID = 1
-WORLD_SIZE = (64, 64)
+AGENT_ID = 0
+WORLD_SIZE = (200, 200)
 SHARE_OF_AGENTS = 0.01
 SIZE_OF_GENOTYPE = 5
 DELAY_OF_ANIMATION = 10  # ms
-VALUE_OF_FITNESS_FUNC = 1000
+VALUE_OF_FITNESS_FUNC = 300
+COUNT_OF_POPULATION = int(WORLD_SIZE[0] * WORLD_SIZE[1] * SHARE_OF_AGENTS)
 
 
 class Agent:
@@ -20,13 +22,15 @@ class Agent:
         self.id = a_id
         self.coords = coords
         self.health = int(100)
+        self.alive = True
         self.genotype = np.random.randint(5, size=SIZE_OF_GENOTYPE)
         self.number_of_generation = 1
 
     def __str__(self):
-        return f"Id:{self.id}, Cs:{self.coords}, \n" \
-               f"Gen:{self.genotype}, \n" \
-               f"N_GEN: {self.number_of_generation}"
+        return f"Id:{self.id}, Cs:{self.coords} \n" \
+               f"Gen:{self.genotype} \n" \
+               f"N_GEN: {self.number_of_generation} \n" \
+               f"HEALTH: {self.health}"
 
 
 class World:
@@ -34,7 +38,7 @@ class World:
         self.size = size
         self.share_of_agents = share_of_agents
         self.matrix = np.zeros(size, dtype=int)
-        self.current_generation = {}
+        self.current_generation = defaultdict()
         self.rules = {
             0: lambda agent: self.move(agent, "up"),
             1: lambda agent: self.move(agent, "down"),
@@ -46,15 +50,14 @@ class World:
     def create_start_generation(self):
         global AGENT_ID
 
-        count_of_agents = int(self.size[0] * self.size[1] * self.share_of_agents)
-        for _ in range(count_of_agents):
-            agent = Agent(AGENT_ID)
-            self.current_generation.update({agent.id: agent})
+        for _ in range(COUNT_OF_POPULATION):
+            agent = Agent(_)
+            self.current_generation[AGENT_ID] = agent
             self.plant_agent_to_random_place(agent)
 
             AGENT_ID += 1
 
-        return np.copy(self.matrix)
+        return self.matrix
 
     def make_step(self, i):
         agents_to_kill = []
@@ -67,16 +70,15 @@ class World:
         for agent in agents_to_kill:
             self.kill_agent(agent)
             new_agent = self.reproduction()
-            self.current_generation.update({new_agent.id: new_agent})
+            self.current_generation[new_agent.id] = new_agent
             self.plant_agent_to_random_place(new_agent)
 
-        return np.copy(self.matrix)
+        return self.matrix
 
     def reproduction(self):
         global AGENT_ID
-        possible_parents_indexes = np.where(self.matrix != 0)
-        possible_parents_indexes = list(zip(possible_parents_indexes[0], possible_parents_indexes[1]))
 
+        possible_parents_indexes = np.array(np.where(self.matrix != 0)).T
         parents_indexes = random.choices(possible_parents_indexes, k=2)
 
         agent1 = self.get_agent(coords=parents_indexes[0])
@@ -88,17 +90,15 @@ class World:
         new_gens = list(child_gens_1 + child_gens_2)
 
         child_agent = Agent(AGENT_ID)
-        child_agent.number_of_generation = max(agent1.number_of_generation, agent2.number_of_generation) + 10
-        AGENT_ID += 1
+        child_agent.number_of_generation = max(agent1.number_of_generation, agent2.number_of_generation) + 1
 
+        AGENT_ID += 1
         child_agent.genotype = new_gens
 
         return child_agent
 
-    def get_agent(self, a_id=None, coords=None):
-        if coords:
-            a_id = self.matrix[coords[0], coords[1]]
-
+    def get_agent(self, coords=None):
+        a_id = self.matrix[coords[0], coords[1]]
         return self.current_generation[a_id]
 
     def kill_agent(self, agent):
@@ -108,9 +108,9 @@ class World:
         return agent
 
     def plant_agent_to_random_place(self, agent):
-        possible_indexes = np.where(self.matrix == 0)
-        possible_indexes = list(zip(possible_indexes[0], possible_indexes[1]))
+        seat_indexes = (0, 0)
 
+        possible_indexes = np.array(np.where(self.matrix == 0)).T
         seat_indexes = random.choice(possible_indexes)
         self.set_agent(agent, seat_indexes)
 
@@ -147,7 +147,7 @@ class World:
         if direction == "right":
             new_coords[1] += 1
         if direction == "none":
-            agent.health += 25
+            agent.health += 24
 
         self.set_agent(agent, new_coords)
 
@@ -160,44 +160,55 @@ class Program:
         self.world = World(size, share_of_agents)
         self.world_states = []
 
-    def start(self):
-        first_world_state = self.world.create_start_generation()
-        self.world_states.append(first_world_state)
-
-        while self.fitness_func() < VALUE_OF_FITNESS_FUNC:
-            print(self.fitness_func())
-            for i in range(SIZE_OF_GENOTYPE):
-                world_state = self.world.make_step(i)
-                self.world_states.append(world_state)
-
-        print(self.fitness_func())
-        self.animate()
-
-    def animate(self):
-        fig = plt.figure(figsize=(8, 8))
-        im = plt.imshow(self.world_states[0])
-
-        def animate_func(i):
-            im.set_array(self.world_states[i])
-            return [im]
-
-        anim = animation.FuncAnimation(
-            fig,
-            animate_func,
-            interval=DELAY_OF_ANIMATION,  # in ms
-            frames=len(self.world_states)
-        )
-
-        plt.show()
-        # anim.save("test_anim.gif", writer="imagemagick")
+    # def start(self):
+    #     count_of_iterations = 0
+    #     first_world_state = self.world.create_start_generation()
+    #
+    #     while self.fitness_func() < VALUE_OF_FITNESS_FUNC:
+    #         count_of_iterations += 1
+    #         for i in range(SIZE_OF_GENOTYPE):
+    #             world_state = self.world.make_step(i)
+    #
+    #     print(f"FITNESS FUNC: {self.fitness_func()} \n"
+    #           f"ITERATIONS: {count_of_iterations} \n"
+    #           f"POPULATION: {COUNT_OF_POPULATION}")
 
     def fitness_func(self):
-        return sum(agent.health for agent in self.world.current_generation.values()) / len(
-            self.world.current_generation)
+        return sum(
+            agent.health for agent in self.world.current_generation.values()) / COUNT_OF_POPULATION
 
     def __str__(self):
         return str(self.world)
 
+    def animate(self):
+        first_world_state = self.world.create_start_generation()
+
+        fig = plt.figure(figsize=(10, 10))
+        im = plt.imshow(first_world_state)
+
+        def animate_func(world_state):
+            im.set_array(world_state)
+            return [im]
+
+        def make_step():
+            while self.fitness_func() < VALUE_OF_FITNESS_FUNC:
+                print(self.fitness_func())
+                for i in range(SIZE_OF_GENOTYPE):
+                    world_state = self.world.make_step(i)
+                    yield world_state
+
+        # make_step()
+        anim = animation.FuncAnimation(
+            fig,
+            animate_func,
+            make_step,
+            interval=DELAY_OF_ANIMATION,  # in ms
+            blit=True,
+            repeat=False
+        )
+
+        plt.show()
+
 
 program = Program(share_of_agents=SHARE_OF_AGENTS, size=WORLD_SIZE)
-program.start()
+program.animate()

@@ -6,13 +6,14 @@ from collections import defaultdict
 import itertools
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.widgets import TextBox
 
 # GLOBALS
 AGENT_ID = 0
-WORLD_SIZE = (100, 100)
-SHARE_OF_AGENTS = 0.01
-SIZE_OF_GENOTYPE = 8
-DELAY_OF_ANIMATION = 10  # ms
+WORLD_SIZE = (100, 300)
+SHARE_OF_AGENTS = 0.001
+SIZE_OF_GENOTYPE = 5
+DELAY_OF_ANIMATION = 25  # ms
 VALUE_OF_FITNESS_FUNC = 1000
 COUNT_OF_POPULATION = int(WORLD_SIZE[0] * WORLD_SIZE[1] * SHARE_OF_AGENTS)
 WORLD_VIEW = "HEALTH"
@@ -190,35 +191,39 @@ class Program:
         start_time = time.time()
 
         self.current_state = self.world.create_start_generation(WORLD_VIEW)
-        time.sleep(DELAY_OF_ANIMATION/1000)
+        time.sleep(DELAY_OF_ANIMATION / 1000)
 
         while self.fitness_func() < VALUE_OF_FITNESS_FUNC:
             self.count_of_iterations += 1
             for i in range(SIZE_OF_GENOTYPE):
                 self.current_state = self.world.make_step(i, WORLD_VIEW)
-                time.sleep(DELAY_OF_ANIMATION/1000)
+                time.sleep(DELAY_OF_ANIMATION / 1000)
 
         self.time_of_exec = time.time() - start_time
 
     def heatmap(self, data):
-        fig, ax = plt.subplots()
-        ax.set_title("GENERATION ALGORITHM")
-        im = plt.imshow(data)
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot()
+        box_ax = ax.get_position()
+        im = ax.imshow(data, vmax=100)
 
-        return im
+        text_box = plt.axes([box_ax.x0, box_ax.y0, 0.2, 0.1])
+        text_box.set_visible(False)
+
+        return fig, im, text_box
 
     def start(self):
         thread = threading.Thread(target=self.gen_alg)
         thread.daemon = True
         thread.start()
 
-        fig, ax = plt.subplots()
-        ax.set_title("GENERATION ALGORITHM")
-        im = plt.imshow(self.current_state)
+        time.sleep(1)
+        fig, im, text_box = self.heatmap(self.current_state)
 
-        def animate_func(args):
+        def animate_func(i):
+            text = text_box.text(0, 0, f"Iterations: {self.count_of_iterations}", size="medium")
             im.set_array(self.current_state)
-            return [im]
+            return [im, text]
 
         anim = animation.FuncAnimation(
             fig,
